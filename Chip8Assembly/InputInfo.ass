@@ -1,0 +1,46 @@
+﻿CLS
+
+RET
+SYS addr
+JP addr
+JP label (translated to address)
+JP V0, addr
+JP V0, label
+CALL addr
+CALL label (translated to address)
+
+SE Vx, byte
+SE Vx, Vy
+SNE Vx, byte
+SNE Vx, Vy
+SKP Vx
+SKNP Vx
+
+LD Vx, byte
+LD Vx, Vy
+LD F, Vx
+LD B, Vx
+LD [I], Vx
+LD Vx, [I]
+LD Vx, DT
+LD Vx, K
+LD DT, Vx
+LD ST, Vx
+LD I, addr
+
+AND Vx, Vy
+OR Vx, Vy
+XOR Vx, Vy
+
+ADD Vx, byte
+ADD Vx, Vy
+ADD I, Vx
+
+SUB Vx, Vy
+SUBN Vx, Vy
+
+SHR Vx {, Vy}
+SHL Vx {, Vy}
+
+RND Vx, byte
+DRW Vx, Vy, nibble
