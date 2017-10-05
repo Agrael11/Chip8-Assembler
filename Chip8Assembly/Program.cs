@@ -122,7 +122,7 @@ namespace Chip8Assembly
             else
             {
                 if (!Labels.ContainsKey(input)) throw new Exception("Incorrect address/label: " + input);
-                addr = Labels[input] + 0x200;
+                addr = (Labels[input]*2) + 0x200;
             }
             if (addr > 0xFFF) throw new Exception("Address higher then 12 bit: " + addr);
             return (ushort)addr;
@@ -174,6 +174,8 @@ namespace Chip8Assembly
                     instructions.Add(new Instruction() { AssemblyInstr = instr.ToUpper(), AssemblyArgs = args, OriginalCode = data[i] });
                 }
                 FirstPass();
+                SecondPass();
+                ThirdPass(output);
                 var special = 0;
             for (var i = 0; i < instructions.Count; i++)
             {
@@ -218,8 +220,7 @@ namespace Chip8Assembly
                 {
                     throw new Exception($"Error at line {i + special + 1} : {instructions[i].OriginalCode}", ex);
                 }
-            }SecondPass();
-                ThirdPass(output);
+            }
             }
             catch (Exception ex)
             {
@@ -304,7 +305,7 @@ namespace Chip8Assembly
             List<byte> toWriteList = new List<byte>();
             for (int i = 0; i < instructions.Count; i++)
             {
-                byte Lower = (byte)((instructions[i].Opcode >> 8) & 0xFF00);
+                byte Lower = (byte)((instructions[i].Opcode >> 8) & 0xFF);
                 byte Upper = (byte)(instructions[i].Opcode & 0xFF);
                 toWriteList.Add(Lower);
                 toWriteList.Add(Upper);
