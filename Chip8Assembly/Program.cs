@@ -122,7 +122,7 @@ namespace Chip8Assembly
             else
             {
                 if (!Labels.ContainsKey(input)) throw new Exception("Incorrect address/label: " + input);
-                addr = (Labels[input]*2) + 0x200;
+                addr = (Labels[input] * 2) + 0x200;
             }
             if (addr > 0xFFF) throw new Exception("Address higher then 12 bit: " + addr);
             return (ushort)addr;
@@ -142,6 +142,13 @@ namespace Chip8Assembly
             if (!int.TryParse(input, out parse)) throw new Exception("Byte not number: " + input);
             if (parse > 0xFF) throw new Exception("Byte have to be 8 bits: " + input);
             return (Byte)parse;
+        }
+        public ushort ParseUshort(string input)
+        {
+            int parse;
+            if (!int.TryParse(input, out parse)) throw new Exception("Byte not number: " + input);
+            if (parse > 0xFFFF) throw new Exception("Byte have to be 16 bits: " + input);
+            return (ushort)parse;
         }
 
         public Instruction DecodeInstruction(string instruction)
@@ -184,7 +191,7 @@ namespace Chip8Assembly
             {
                 for (var i = 0; i < data.Length; i++)
                 {
-                    instructions.Add(DecodeInstruction(data[i].Trim(' ','\t')));
+                    instructions.Add(DecodeInstruction(data[i].Trim(' ', '\t')));
                 }
                 FirstPass();
                 SecondPass();
@@ -214,7 +221,21 @@ namespace Chip8Assembly
             {
                 try
                 {
-                    if (instructions[i].AssemblyInstr.EndsWith(":"))
+                    if (instructions[i].AssemblyInstr == ".ORG")
+                    {
+                        ushort target = ParseAddress(instructions[i].AssemblyArgs[0]);
+                        if (target % 2 == 1) throw new Exception("Address have to be dividible by 2 " + i + ": " + instructions[i].OriginalCode);
+                        if (target < 0x200) throw new Exception("Address have to be higher than 0x200");
+                        target = (ushort)((target - 0x200) / 2);
+                        instructions.RemoveAt(i);
+                        while (i < target)
+                        {
+                            instructions.Insert(i, new Instruction() { AssemblyInstr = "NIL", Opcode = 0, OriginalCode = ".ORG " + target, AssemblyArgs = new string[0] });
+                            i++;
+                        }
+                        i = target-1;
+                    }
+                    else if (instructions[i].AssemblyInstr.EndsWith(":"))
                     {
                         Console.WriteLine("Label: " + instructions[i].AssemblyInstr + "@" + i);
                         Labels.Add(instructions[i].AssemblyInstr.Substring(0, instructions[i].AssemblyInstr.Length - 1), (ushort)i);
@@ -266,6 +287,8 @@ namespace Chip8Assembly
                         case "SHL": instructions[i].Opcode = SHL(instructions[i]); break;
                         case "RND": instructions[i].Opcode = RND(instructions[i]); break;
                         case "DRW": instructions[i].Opcode = DRW(instructions[i]); break;
+                        case "DATA": instructions[i].Opcode = DATA(instructions[i]); break;
+                        case "NIL":break;
                     }
                 }
                 catch (Exception ex)
@@ -580,6 +603,11 @@ namespace Chip8Assembly
             byte reg2 = ParseRegister(instr.AssemblyArgs[1]);
             byte val = ParseNibble(instr.AssemblyArgs[2]);
             return (ushort)(0xD000 + (reg1 << 8) + (reg2 << 4) + val);
+        }
+
+        public ushort DATA(Instruction Instr)
+        {
+            return ParseUshort(Instr.AssemblyArgs[0]);
         }
     }
 }
