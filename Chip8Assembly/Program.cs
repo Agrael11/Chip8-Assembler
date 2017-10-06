@@ -144,83 +144,51 @@ namespace Chip8Assembly
             return (Byte)parse;
         }
 
+        public Instruction DecodeInstruction(string instruction)
+        {
+            string instr = instruction;
+            string[] args = new string[0];
+
+            if (instruction.IndexOf(' ') >= 0)
+            {
+                if (instruction.Contains(":"))
+                {
+                    instr = instruction.Split(':')[0] + ":";
+                    args = new string[] { instruction.Split(':')[1].TrimStart(' ') };
+                }
+                else
+                {
+                    instr = instruction.Substring(0, instruction.IndexOf(' '));
+                    string arg = instruction.Substring(instruction.IndexOf(' ') + 1).Replace(" ", "");
+                    args = arg.Split(',');
+                    for (int j = 0; j < args.Length; j++)
+                    {
+                        if (args[j].StartsWith("0x"))
+                        {
+                            args[j] = Convert.ToUInt16(args[j], 16).ToString();
+                        }
+                        else if (args[j].StartsWith("0b"))
+                        {
+                            args[j] = Convert.ToUInt16(args[j], 2).ToString();
+                        }
+                        args[j] = args[j].ToUpper();
+                    }
+                }
+            }
+            return new Instruction() { AssemblyInstr = instr.ToUpper(), AssemblyArgs = args, OriginalCode = instruction };
+        }
+
         public void Start(string[] data, string output)
         {
             try
             {
                 for (var i = 0; i < data.Length; i++)
                 {
-                    string instr = data[i];
-                    string[] args = new string[0];
-
-                    if (data[i].IndexOf(' ') >= 0)
-                    {
-                        instr = data[i].Substring(0, data[i].IndexOf(' '));
-                        string arg = data[i].Substring(data[i].IndexOf(' ') + 1).Replace(" ", "");
-                        args = arg.Split(',');
-                        for (int j = 0; j < args.Length; j++)
-                        {
-                            if (args[j].StartsWith("0x"))
-                            {
-                                args[j] = Convert.ToUInt16(args[j], 16).ToString();
-                            }
-                            else if (args[j].StartsWith("0b"))
-                            {
-                                args[j] = Convert.ToUInt16(args[j], 2).ToString();
-                            }
-                            args[j] = args[j].ToUpper();
-                        }
-                    }
-                    instructions.Add(new Instruction() { AssemblyInstr = instr.ToUpper(), AssemblyArgs = args, OriginalCode = data[i] });
+                    instructions.Add(DecodeInstruction(data[i].Trim(' ','\t')));
                 }
                 FirstPass();
                 SecondPass();
                 ThirdPass(output);
-                var special = 0;
-            for (var i = 0; i < instructions.Count; i++)
-            {
-                try
-                {
-                    if (instructions[i].AssemblyInstr.EndsWith(":"))
-                    {
-                        Console.WriteLine("Label: " + instructions[i].AssemblyInstr + "@" + i);
-                        Labels.Add(instructions[i].AssemblyInstr.Substring(0, instructions[i].AssemblyInstr.Length - 1), (ushort)i);
-                        instructions.RemoveAt(i);
-                        i--;
-                        special++;
-                    }
-                    else
-                    {
-                        switch (instructions[i].AssemblyInstr)
-                        {
-                            case "CLS": instructions[i].Opcode = CLS(instructions[i]); break;
-                            case "RET": instructions[i].Opcode = RET(instructions[i]); break;
-                            case "SYS": instructions[i].Opcode = SYS(instructions[i]); break;
-                            case "JP": instructions[i].Opcode = JP(instructions[i]); break;
-                            case "CALL": instructions[i].Opcode = CALL(instructions[i]); break;
-                            case "SE": instructions[i].Opcode = SE(instructions[i]); break;
-                            case "SNE": instructions[i].Opcode = SNE(instructions[i]); break;
-                            case "SKP": instructions[i].Opcode = SKP(instructions[i]); break;
-                            case "SKNP": instructions[i].Opcode = SKNP(instructions[i]); break;
-                            case "LD": instructions[i].Opcode = LD(instructions[i]); break;
-                            case "AND": instructions[i].Opcode = AND(instructions[i]); break;
-                            case "OR": instructions[i].Opcode = OR(instructions[i]); break;
-                            case "XOR": instructions[i].Opcode = XOR(instructions[i]); break;
-                            case "ADD": instructions[i].Opcode = ADD(instructions[i]); break;
-                            case "SUB": instructions[i].Opcode = SUB(instructions[i]); break;
-                            case "SUBN": instructions[i].Opcode = SUBN(instructions[i]); break;
-                            case "SHR": instructions[i].Opcode = SHR(instructions[i]); break;
-                            case "SHL": instructions[i].Opcode = SHL(instructions[i]); break;
-                            case "RND": instructions[i].Opcode = RND(instructions[i]); break;
-                            case "DRW": instructions[i].Opcode = DRW(instructions[i]); break;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception($"Error at line {i + special + 1} : {instructions[i].OriginalCode}", ex);
-                }
-            }
             }
             catch (Exception ex)
             {
@@ -242,7 +210,6 @@ namespace Chip8Assembly
 
         public void FirstPass()
         {
-            var special = 0;
             for (var i = 0; i < instructions.Count; i++)
             {
                 try
@@ -251,14 +218,22 @@ namespace Chip8Assembly
                     {
                         Console.WriteLine("Label: " + instructions[i].AssemblyInstr + "@" + i);
                         Labels.Add(instructions[i].AssemblyInstr.Substring(0, instructions[i].AssemblyInstr.Length - 1), (ushort)i);
-                        instructions.RemoveAt(i);
-                        i--;
-                        special++;
+
+                        if (instructions[i].AssemblyArgs.Length > 0)
+                        {
+                            instructions[i] = DecodeInstruction(instructions[i].AssemblyArgs[0]);
+                            i--;
+                        }
+                        else
+                        {
+                            instructions.RemoveAt(i);
+                            i--;
+                        }
                     }
                 }
                 catch (Exception ex)
                 {
-                    throw new Exception($"Error at line {i + special + 1} : {instructions[i].OriginalCode}", ex);
+                    throw new Exception($"Error at line {i + 1} : {instructions[i].OriginalCode}", ex);
                 }
             }
         }
